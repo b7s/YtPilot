@@ -94,16 +94,16 @@ final class YtPilot
         return $this;
     }
 
-    public function output(string $template): self
+    public function outputPath(string $directory): self
     {
-        $this->outputTemplate = $template;
+        $this->outputPath = rtrim($directory, DIRECTORY_SEPARATOR);
 
         return $this;
     }
 
-    public function outputPath(string $directory): self
+    public function output(string $template): self
     {
-        $this->outputPath = rtrim($directory, DIRECTORY_SEPARATOR);
+        $this->outputTemplate = $template;
 
         return $this;
     }
@@ -420,8 +420,11 @@ final class YtPilot
 
         $command = $this->buildCommand();
         $timeout = $this->timeout ?? Config::get('timeout', 300);
+        
+        // Use configured default download path if not set
+        $workingDir = $this->outputPath ?? Config::get('download_path');
 
-        $result = $this->processRunner->run($command, $this->outputPath, $timeout);
+        $result = $this->processRunner->run($command, $workingDir, $timeout);
 
         if (!$result->success) {
             return DownloadResult::failure($result->errorOutput ?: $result->output, $result->exitCode);

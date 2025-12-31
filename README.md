@@ -456,6 +456,8 @@ Control **how** the download will be performed:
 | `skipDownload()`     | Skip actual download     | `->skipDownload()`              |
 | `simulate()`         | Simulate download        | `->simulate()`                  |
 
+> **Note:** If no `outputPath()` is specified, files are downloaded to the current working directory or the path defined in `config/ytpilot.php` under `download_path`.
+
 #### Binary Management
 
 | Method                    | Description                             | Example                                 |
@@ -521,7 +523,45 @@ return [
 
     // Default timeout in seconds
     'timeout' => 300,
+
+    // Default download directory (null = current working directory)
+    'download_path' => null,
 ];
+```
+
+### Download Location
+
+By default, files are downloaded to the **current working directory** (where your PHP script is executed).
+
+You can change this in three ways:
+
+1. **Set in configuration file:**
+
+```php
+// config/ytpilot.php
+return [
+    'download_path' => './downloads',
+    // ...
+];
+```
+
+2. **Set per download:**
+
+```php
+YtPilot::make()
+    ->url($url)
+    ->outputPath('./my-videos')
+    ->download();
+```
+
+3. **Set custom filename template:**
+
+```php
+YtPilot::make()
+    ->url($url)
+    ->outputPath('./downloads')
+    ->output('%(title)s-%(id)s.%(ext)s')
+    ->download();
 ```
 
 ---

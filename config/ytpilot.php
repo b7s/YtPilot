@@ -17,4 +17,7 @@ return [
     ],
 
     'timeout' => 300,
+
+    // Default download directory (null = current working directory)
+    'download_path' => null,
 ];

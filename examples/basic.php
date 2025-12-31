@@ -33,7 +33,7 @@ if ($result->success) {
 }
 
 // Example 3: Download with subtitles
-echo "Example 3: Download with subtitles\n";
+echo "Example 3: Download video with subtitles\n";
 $result = YtPilot::make()
     ->url('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
     ->video()
