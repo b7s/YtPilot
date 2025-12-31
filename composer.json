@@ -1,0 +1,42 @@
+{
+    "name": "b7s/ytpilot",
+    "description": "A PHP 8.3+ backend wrapper for yt-dlp with automatic binary management and fluent API",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "YtPilot",
+            "email": "me@brunots.dev"
+        }
+    ],
+    "require": {
+        "php": "^8.3",
+        "symfony/process": "^7.0|^8.0",
+        "symfony/console": "^7.0|^8.0"
+    },
+    "require-dev": {
+        "pestphp/pest": "^3.0",
+        "phpstan/phpstan": "^1.10"
+    },
+    "autoload": {
+        "psr-4": {
+            "YtPilot\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "YtPilot\\Tests\\": "tests/"
+        }
+    },
+    "bin": [
+        "bin/ytpilot"
+    ],
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

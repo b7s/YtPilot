@@ -1,0 +1,38 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+$autoloadPaths = [
+    __DIR__ . '/../vendor/autoload.php',
+    __DIR__ . '/../../../autoload.php',
+];
+
+$autoloaderFound = false;
+foreach ($autoloadPaths as $autoloadPath) {
+    if (file_exists($autoloadPath)) {
+        require $autoloadPath;
+        $autoloaderFound = true;
+        break;
+    }
+}
+
+if (!$autoloaderFound) {
+    fwrite(STDERR, "Autoloader not found. Run 'composer install' first.\n");
+    exit(1);
+}
+
+use Symfony\Component\Console\Application;
+use YtPilot\Services\Console\DoctorCommand;
+use YtPilot\Services\Console\InstallCommand;
+use YtPilot\Services\Console\UpdateCommand;
+use YtPilot\Services\Console\VersionCommand;
+
+$application = new Application('YtPilot', '1.0.0');
+
+$application->add(new InstallCommand());
+$application->add(new UpdateCommand());
+$application->add(new VersionCommand());
+$application->add(new DoctorCommand());
+
+$application->run();

@@ -1,0 +1,9 @@
+/vendor/
+/composer.lock
+/.ytpilot/
+/.phpunit.cache
+/.idea/
+/.vscode/
+*.log
+.DS_Store
+/downloads/
