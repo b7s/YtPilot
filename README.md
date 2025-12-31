@@ -497,6 +497,114 @@ Execute immediately and return data:
 
 ---
 
+---
+
+## 📊 Progress Callbacks
+
+Track download and conversion progress in real-time:
+
+### Download Progress
+
+```php
+YtPilot::make()
+    ->url('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+    ->video()
+    ->onDownloading(function (int $percentage, float $downloaded, float $total): void {
+        echo "\rDownloading: {$percentage}% ";
+    })
+    ->download();
+```
+
+### Conversion Progress
+
+```php
+YtPilot::make()
+    ->onConverting(function (int $percentage, float $current, float $duration): void {
+        $currentTime = gmdate('H:i:s', (int) $current);
+        $totalTime = gmdate('H:i:s', (int) $duration);
+        echo "\rConverting: {$percentage}% ({$currentTime} / {$totalTime}) ";
+    })
+    ->convertVideoToMp4('input.webm', 'output.mp4');
+```
+
+**Callback Parameters:**
+
+- `$percentage` - Progress percentage (0-100)
+- `$downloaded` / `$current` - Current bytes/seconds processed
+- `$total` / `$duration` - Total bytes/seconds to process
+
+---
+
+## 🔄 Video & Audio Conversion
+
+Convert media files between formats using the project's ffmpeg binary:
+
+### Video Conversion Methods
+
+| Method                                                          | Description                |
+| --------------------------------------------------------------- | -------------------------- |
+| `convertVideoTo(string $input, string $output, string $format)` | Convert to custom format   |
+| `convertVideoToMp4(string $input, string $output)`              | Convert to MP4 (H.264/AAC) |
+| `convertVideoToMkv(string $input, string $output)`              | Convert to MKV (copy)      |
+| `convertVideoToWebm(string $input, string $output)`             | Convert to WebM (VP9/Opus) |
+| `convertVideoToAvi(string $input, string $output)`              | Convert to AVI (H.264/MP3) |
+
+### Audio Conversion Methods
+
+| Method                                                          | Description                |
+| --------------------------------------------------------------- | -------------------------- |
+| `convertAudioTo(string $input, string $output, string $format)` | Convert to custom format   |
+| `convertAudioToMp3(string $input, string $output)`              | Convert to MP3 (320kbps)   |
+| `convertAudioToM4a(string $input, string $output)`              | Convert to M4A (AAC 192k)  |
+| `convertAudioToOpus(string $input, string $output)`             | Convert to Opus (128kbps)  |
+| `convertAudioToOgg(string $input, string $output)`              | Convert to Ogg Vorbis      |
+| `convertAudioToWav(string $input, string $output)`              | Convert to WAV (PCM)       |
+| `convertAudioToFlac(string $input, string $output)`             | Convert to FLAC (lossless) |
+
+### Conversion Examples
+
+**Download and convert:**
+
+```php
+$result = YtPilot::make()
+    ->url('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+    ->video()
+    ->onDownloading(fn($p) => print "\rDownload: {$p}%")
+    ->download();
+
+if ($result->success && $result->videoPath) {
+    YtPilot::make()
+        ->onConverting(fn($p) => print "\rConvert: {$p}%")
+        ->convertVideoToMp4($result->videoPath, 'output.mp4');
+}
+```
+
+**Convert existing files:**
+
+```php
+$ytpilot = YtPilot::make();
+
+// Convert video formats
+$ytpilot->convertVideoToWebm('video.mp4', 'video.webm');
+$ytpilot->convertVideoToMkv('video.mp4', 'video.mkv');
+
+// Convert audio formats
+$ytpilot->convertAudioToMp3('audio.m4a', 'audio.mp3');
+$ytpilot->convertAudioToFlac('audio.wav', 'audio.flac');
+```
+
+**Custom format with progress:**
+
+```php
+YtPilot::make()
+    ->onConverting(function (int $percentage, float $current, float $duration): void {
+        echo "\rProgress: {$percentage}% ";
+    })
+    ->convertVideoTo('input.avi', 'output.mp4', 'mp4');
+```
+
+---
+
 ## ⚙️ Configuration
 
 Create a `config/ytpilot.php` file:

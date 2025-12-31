@@ -114,7 +114,7 @@ final class FfmpegBinaryService
         $lines = explode("\n", $result->output);
         $firstLine = array_shift($lines);
         
-        if (in_array($firstLine, [0,null,''], true)) {
+        if (in_array($firstLine, [0, null, ''], true)) {
             return 'unknown';
         }
 

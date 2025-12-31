@@ -20,6 +20,7 @@ use YtPilot\Services\Parsing\FormatsParserService;
 use YtPilot\Services\Parsing\SubtitlesParserService;
 use YtPilot\Services\Platform\PlatformService;
 use YtPilot\Services\Process\ProcessRunnerService;
+use YtPilot\Services\Conversion\ConversionService;
 
 final class YtPilot
 {
@@ -32,6 +33,12 @@ final class YtPilot
     private ?string $ytDlpPath = null;
     private ?string $ffmpegPath = null;
     private ?string $ffprobePath = null;
+
+    /** @var ?callable(int, float, float): void */
+    private $onDownloadProgress = null;
+
+    /** @var ?callable(int, float, float): void */
+    private $onConvertProgress = null;
 
     private bool $downloadVideo = false;
     private bool $downloadAudio = false;
@@ -64,6 +71,7 @@ final class YtPilot
     private FormatsParserService $formatsParser;
     private SubtitlesParserService $subtitlesParser;
     private MediaInfoService $mediaInfo;
+    private ConversionService $conversionService;
 
     private function __construct()
     {
@@ -414,6 +422,26 @@ final class YtPilot
         return $this;
     }
 
+    /**
+     * @param callable(int, float, float): void $callback
+     */
+    public function onDownloading(callable $callback): self
+    {
+        $this->onDownloadProgress = $callback;
+
+        return $this;
+    }
+
+    /**
+     * @param callable(int, float, float): void $callback
+     */
+    public function onConverting(callable $callback): self
+    {
+        $this->onConvertProgress = $callback;
+
+        return $this;
+    }
+
     public function download(): DownloadResult
     {
         $this->requireUrl();
@@ -424,7 +452,33 @@ final class YtPilot
         // Use configured default download path if not set
         $workingDir = $this->outputPath ?? Config::get('download_path');
 
-        $result = $this->processRunner->run($command, $workingDir, $timeout);
+        $callback = null;
+        if ($this->onDownloadProgress !== null) {
+            $totalSize = 0.0;
+            $downloadedSize = 0.0;
+
+            $callback = function (string $type, string $buffer) use (&$totalSize, &$downloadedSize): void {
+                if ($totalSize === 0.0 && preg_match('/\[download\]\s+(\d+\.\d+)%/', $buffer, $matches)) {
+                    $percentage = (int) round((float) $matches[1]);
+                    ($this->onDownloadProgress)($percentage, $downloadedSize, $totalSize);
+                } elseif (preg_match('/\[download\]\s+(\d+\.\d+)%\s+of\s+~?\s*(\d+\.\d+)([KMG]iB)/', $buffer, $matches)) {
+                    $percentage = (int) round((float) $matches[1]);
+                    $size = (float) $matches[2];
+                    $unit = $matches[3];
+
+                    $totalSize = match ($unit) {
+                        'GiB' => $size * 1024 * 1024 * 1024,
+                        'MiB' => $size * 1024 * 1024,
+                        default => $size * 1024,
+                    };
+
+                    $downloadedSize = ($percentage / 100) * $totalSize;
+                    ($this->onDownloadProgress)($percentage, $downloadedSize, $totalSize);
+                }
+            };
+        }
+
+        $result = $this->processRunner->run($command, $workingDir, $timeout, $callback);
 
         if (!$result->success) {
             return DownloadResult::failure($result->errorOutput ?: $result->output, $result->exitCode);
@@ -506,6 +560,78 @@ final class YtPilot
         $this->requireUrl();
 
         return $this->mediaInfo->getAvailableSubtitles($this->url, $this->ytDlpPath);
+    }
+
+    public function convertVideoTo(string $inputPath, string $outputPath, string $format): void
+    {
+        $this->conversionService->convert(
+            $inputPath,
+            $outputPath,
+            $format,
+            $this->ffmpegPath,
+            $this->onConvertProgress,
+        );
+    }
+
+    public function convertAudioTo(string $inputPath, string $outputPath, string $format): void
+    {
+        $this->conversionService->convert(
+            $inputPath,
+            $outputPath,
+            $format,
+            $this->ffmpegPath,
+            $this->onConvertProgress,
+        );
+    }
+
+    public function convertVideoToMp4(string $inputPath, string $outputPath): void
+    {
+        $this->convertVideoTo($inputPath, $outputPath, 'mp4');
+    }
+
+    public function convertVideoToMkv(string $inputPath, string $outputPath): void
+    {
+        $this->convertVideoTo($inputPath, $outputPath, 'mkv');
+    }
+
+    public function convertVideoToWebm(string $inputPath, string $outputPath): void
+    {
+        $this->convertVideoTo($inputPath, $outputPath, 'webm');
+    }
+
+    public function convertVideoToAvi(string $inputPath, string $outputPath): void
+    {
+        $this->convertVideoTo($inputPath, $outputPath, 'avi');
+    }
+
+    public function convertAudioToMp3(string $inputPath, string $outputPath): void
+    {
+        $this->convertAudioTo($inputPath, $outputPath, 'mp3');
+    }
+
+    public function convertAudioToM4a(string $inputPath, string $outputPath): void
+    {
+        $this->convertAudioTo($inputPath, $outputPath, 'm4a');
+    }
+
+    public function convertAudioToOpus(string $inputPath, string $outputPath): void
+    {
+        $this->convertAudioTo($inputPath, $outputPath, 'opus');
+    }
+
+    public function convertAudioToOgg(string $inputPath, string $outputPath): void
+    {
+        $this->convertAudioTo($inputPath, $outputPath, 'ogg');
+    }
+
+    public function convertAudioToWav(string $inputPath, string $outputPath): void
+    {
+        $this->convertAudioTo($inputPath, $outputPath, 'wav');
+    }
+
+    public function convertAudioToFlac(string $inputPath, string $outputPath): void
+    {
+        $this->convertAudioTo($inputPath, $outputPath, 'flac');
     }
 
     /** @return list<string> */
@@ -730,6 +856,11 @@ final class YtPilot
             $this->locator,
             $this->formatsParser,
             $this->subtitlesParser,
+        );
+
+        $this->conversionService = new ConversionService(
+            $this->processRunner,
+            $this->locator,
         );
     }
 }
