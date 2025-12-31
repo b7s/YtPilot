@@ -47,12 +47,14 @@ final class FormatsParserService
     public function parseLine(string $line): ?FormatItem
     {
         if (preg_match(self::FORMAT_REGEX, $line, $matches)) {
+            // PHPStan doesn't understand preg_match creates string keys
+            // @phpstan-ignore argument.type
             return FormatItem::fromParsed($matches);
         }
 
         $parts = preg_split('/\s+/', $line, -1, PREG_SPLIT_NO_EMPTY);
 
-        if (count($parts) < 3) {
+        if ($parts === false || count($parts) < 3) {
             return null;
         }
 
@@ -141,7 +143,7 @@ final class FormatsParserService
         $containers = [];
 
         foreach ($formats as $format) {
-            if ($format->ext !== null && $format->ext !== '') {
+            if ($format->ext !== '') {
                 $containers[] = $format->ext;
             }
         }
@@ -158,7 +160,7 @@ final class FormatsParserService
         $ranges = [];
 
         foreach ($formats as $format) {
-            if ($format->vcodec !== null) {
+            if ($format->vcodec !== null && $format->vcodec !== '') {
                 if (str_contains(strtolower($format->vcodec), 'hdr') ||
                     str_contains(strtolower($format->vcodec), 'hev') ||
                     str_contains(strtolower($format->vcodec), 'vp9.2')) {

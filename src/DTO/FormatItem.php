@@ -23,6 +23,7 @@ final readonly class FormatItem
     ) {}
 
     /** @param array<string, mixed> $data */
+    /** @param array<string, mixed> $data */
     public static function fromParsed(array $data): self
     {
         $resolution = $data['resolution'] ?? null;

@@ -106,13 +106,23 @@ final class FfmpegBinaryService
         }
 
         $result = $this->processRunner->run([$binaryPath, '-version'], timeout: 10);
+        
+        if ($result->output === '') {
+            return 'unknown';
+        }
+        
         $lines = explode("\n", $result->output);
+        $firstLine = array_shift($lines);
+        
+        if (in_array($firstLine, [0,null,''], true)) {
+            return 'unknown';
+        }
 
-        if (preg_match('/ffmpeg version (\S+)/', $lines[0] ?? '', $matches)) {
+        if (preg_match('/ffmpeg version (\S+)/', $firstLine, $matches)) {
             return $matches[1];
         }
 
-        return trim($lines[0] ?? 'unknown');
+        return trim($firstLine);
     }
 
     public function isInstalled(?string $ffmpegPath = null, ?string $ffprobePath = null): bool
