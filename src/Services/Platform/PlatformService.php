@@ -25,11 +25,27 @@ final class PlatformService
 
     public function getArch(): string
     {
-        $arch = php_uname('m');
+        $arch = strtolower(php_uname('m'));
 
         return match (true) {
-            str_contains($arch, 'arm64'), str_contains($arch, 'aarch64') => self::ARCH_ARM64,
+            // Check ARM variants first (before checking for '64')
+            str_contains($arch, 'arm64'), 
+            str_contains($arch, 'aarch64'),
+            str_contains($arch, 'armv8') => self::ARCH_ARM64,
+            
+            // Check x64 variants
+            str_contains($arch, 'x86_64'),
+            str_contains($arch, 'amd64'),
+            str_contains($arch, 'x64') => self::ARCH_X64,
+            
+            // Check x86 variants
+            str_contains($arch, 'i386'),
+            str_contains($arch, 'i686'),
+            str_contains($arch, 'x86') => self::ARCH_X86,
+            
+            // Fallback: if contains '64' but not matched above
             str_contains($arch, '64') => self::ARCH_X64,
+            
             default => self::ARCH_X86,
         };
     }
@@ -55,9 +71,30 @@ final class PlatformService
             return false;
         }
 
+        // Method 1: Check ldd version
         $lddOutput = @shell_exec('ldd --version 2>&1') ?? '';
+        if (str_contains(strtolower($lddOutput), 'musl')) {
+            return true;
+        }
 
-        return str_contains(strtolower($lddOutput), 'musl');
+        // Method 2: Check if musl libc exists
+        if (file_exists('/lib/ld-musl-x86_64.so.1') || 
+            file_exists('/lib/ld-musl-aarch64.so.1') ||
+            file_exists('/lib/libc.musl-x86_64.so.1')) {
+            return true;
+        }
+
+        // Method 3: Check getconf (more reliable on Alpine)
+        $getconfOutput = @shell_exec('getconf GNU_LIBC_VERSION 2>&1') ?? '';
+        if (str_contains($getconfOutput, 'not valid') || $getconfOutput === '') {
+            // If getconf doesn't recognize GNU_LIBC_VERSION, likely musl
+            $lddPath = @shell_exec('which ldd 2>/dev/null') ?? '';
+            if ($lddPath !== '') {
+                return true; // Has ldd but no GNU libc version = likely musl
+            }
+        }
+
+        return false;
     }
 
     public function getExecutableExtension(): string
@@ -67,7 +104,7 @@ final class PlatformService
 
     public function getPlatformIdentifier(): string
     {
-        return sprintf('%s-%s%s',
+        return \sprintf('%s-%s%s',
             $this->getOs(),
             $this->getArch(),
             $this->isMusl() ? '-musl' : ''
