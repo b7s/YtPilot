@@ -13,6 +13,7 @@ use YtPilot\Services\Binary\FfmpegBinaryService;
 use YtPilot\Services\Binary\ManifestService;
 use YtPilot\Services\Binary\ReleaseResolverService;
 use YtPilot\Services\Binary\YtDlpBinaryService;
+use YtPilot\Services\Conversion\ConversionService;
 use YtPilot\Services\Filesystem\PathService;
 use YtPilot\Services\Http\DownloaderService;
 use YtPilot\Services\Metadata\MediaInfoService;
@@ -20,18 +21,23 @@ use YtPilot\Services\Parsing\FormatsParserService;
 use YtPilot\Services\Parsing\SubtitlesParserService;
 use YtPilot\Services\Platform\PlatformService;
 use YtPilot\Services\Process\ProcessRunnerService;
-use YtPilot\Services\Conversion\ConversionService;
 
 final class YtPilot
 {
     private ?string $url = null;
+
     private ?string $outputTemplate = null;
+
     private ?string $outputPath = null;
+
     private ?string $formatSelector = null;
+
     private ?int $timeout = null;
 
     private ?string $ytDlpPath = null;
+
     private ?string $ffmpegPath = null;
+
     private ?string $ffprobePath = null;
 
     /** @var ?callable(int, float, float): void */
@@ -41,36 +47,60 @@ final class YtPilot
     private $onConvertProgress = null;
 
     private bool $downloadVideo = false;
+
     private bool $downloadAudio = false;
+
     private bool $downloadSubtitles = false;
+
     private bool $downloadAutoSubtitles = false;
+
     private bool $downloadMetadata = false;
+
     private bool $downloadThumbnail = false;
 
     private bool $audioOnly = false;
+
     private ?string $audioFormat = null;
+
     private ?string $audioQuality = null;
 
     /** @var list<string> */
     private array $subtitleLanguages = [];
+
     private ?string $subtitleFormat = null;
 
     private bool $skipDownload = false;
+
     private bool $simulate = false;
+
     private bool $overwrite = false;
 
+    private ?DownloadResult $lastDownloadResult = null;
+
     private PlatformService $platform;
+
     private PathService $pathService;
+
     private ProcessRunnerService $processRunner;
+
     private DownloaderService $downloader;
+
     private ReleaseResolverService $releaseResolver;
+
     private ManifestService $manifestService;
+
     private BinaryLocatorService $locator;
+
     private YtDlpBinaryService $ytDlpService;
+
     private FfmpegBinaryService $ffmpegService;
+
     private FormatsParserService $formatsParser;
+
     private SubtitlesParserService $subtitlesParser;
+
     private MediaInfoService $mediaInfo;
+
     private ConversionService $conversionService;
 
     private function __construct()
@@ -81,7 +111,7 @@ final class YtPilot
 
     public static function make(): self
     {
-        return new self();
+        return new self;
     }
 
     public function ensureInstalled(): self
@@ -423,7 +453,7 @@ final class YtPilot
     }
 
     /**
-     * @param callable(int, float, float): void $callback
+     * @param  callable(int, float, float): void  $callback
      */
     public function onDownloading(callable $callback): self
     {
@@ -433,7 +463,7 @@ final class YtPilot
     }
 
     /**
-     * @param callable(int, float, float): void $callback
+     * @param  callable(int, float, float): void  $callback
      */
     public function onConverting(callable $callback): self
     {
@@ -448,7 +478,7 @@ final class YtPilot
 
         $command = $this->buildCommand();
         $timeout = $this->timeout ?? Config::get('timeout', 300);
-        
+
         // Use configured default download path if not set
         $workingDir = $this->outputPath ?? Config::get('download_path');
 
@@ -480,13 +510,13 @@ final class YtPilot
 
         $result = $this->processRunner->run($command, $workingDir, $timeout, $callback);
 
-        if (!$result->success) {
+        if (! $result->success) {
             return DownloadResult::failure($result->errorOutput ?: $result->output, $result->exitCode);
         }
 
         $downloadedFiles = $this->parseDownloadedFiles($result->output);
 
-        return DownloadResult::success(
+        $this->lastDownloadResult = DownloadResult::success(
             output: $result->output,
             downloadedFiles: $downloadedFiles,
             videoPath: $this->findFileByType($downloadedFiles, ['mp4', 'mkv', 'webm', 'avi']),
@@ -495,6 +525,8 @@ final class YtPilot
             metadataPath: $this->findFileByType($downloadedFiles, ['json', 'info.json']),
             subtitlePaths: $this->findFilesByType($downloadedFiles, ['srt', 'vtt', 'ass']),
         );
+
+        return $this->lastDownloadResult;
     }
 
     /**
@@ -562,76 +594,131 @@ final class YtPilot
         return $this->mediaInfo->getAvailableSubtitles($this->url, $this->ytDlpPath);
     }
 
-    public function convertVideoTo(string $inputPath, string $outputPath, string $format): void
-    {
+    public function convertVideoTo(
+        ?string $inputPath = null,
+        ?string $outputPath = null,
+        string $format = 'mp4',
+        bool $deleteOriginalAfterConvert = true,
+    ): void {
+        $resolvedInput = $this->resolveConversionInput($inputPath, 'video');
+        $resolvedOutput = $this->resolveConversionOutput($resolvedInput, $outputPath, $format);
+
         $this->conversionService->convert(
-            $inputPath,
-            $outputPath,
+            $resolvedInput,
+            $resolvedOutput,
             $format,
             $this->ffmpegPath,
             $this->onConvertProgress,
         );
+
+        if ($deleteOriginalAfterConvert && $resolvedInput !== $resolvedOutput && is_file($resolvedInput)) {
+            unlink($resolvedInput);
+        }
     }
 
-    public function convertAudioTo(string $inputPath, string $outputPath, string $format): void
-    {
+    public function convertAudioTo(
+        ?string $inputPath = null,
+        ?string $outputPath = null,
+        string $format = 'mp3',
+        bool $deleteOriginalAfterConvert = true,
+    ): void {
+        $resolvedInput = $this->resolveConversionInput($inputPath, 'audio');
+        $resolvedOutput = $this->resolveConversionOutput($resolvedInput, $outputPath, $format);
+
         $this->conversionService->convert(
-            $inputPath,
-            $outputPath,
+            $resolvedInput,
+            $resolvedOutput,
             $format,
             $this->ffmpegPath,
             $this->onConvertProgress,
         );
+
+        if ($deleteOriginalAfterConvert && $resolvedInput !== $resolvedOutput && is_file($resolvedInput)) {
+            unlink($resolvedInput);
+        }
     }
 
-    public function convertVideoToMp4(string $inputPath, string $outputPath): void
+    public function convertVideoToMp4(?string $inputPath = null, ?string $outputPath = null, bool $deleteOriginalAfterConvert = true): void
     {
-        $this->convertVideoTo($inputPath, $outputPath, 'mp4');
+        $this->convertVideoTo($inputPath, $outputPath, 'mp4', $deleteOriginalAfterConvert);
     }
 
-    public function convertVideoToMkv(string $inputPath, string $outputPath): void
+    public function convertVideoToMkv(?string $inputPath = null, ?string $outputPath = null, bool $deleteOriginalAfterConvert = true): void
     {
-        $this->convertVideoTo($inputPath, $outputPath, 'mkv');
+        $this->convertVideoTo($inputPath, $outputPath, 'mkv', $deleteOriginalAfterConvert);
     }
 
-    public function convertVideoToWebm(string $inputPath, string $outputPath): void
+    public function convertVideoToWebm(?string $inputPath = null, ?string $outputPath = null, bool $deleteOriginalAfterConvert = true): void
     {
-        $this->convertVideoTo($inputPath, $outputPath, 'webm');
+        $this->convertVideoTo($inputPath, $outputPath, 'webm', $deleteOriginalAfterConvert);
     }
 
-    public function convertVideoToAvi(string $inputPath, string $outputPath): void
+    public function convertVideoToAvi(?string $inputPath = null, ?string $outputPath = null, bool $deleteOriginalAfterConvert = true): void
     {
-        $this->convertVideoTo($inputPath, $outputPath, 'avi');
+        $this->convertVideoTo($inputPath, $outputPath, 'avi', $deleteOriginalAfterConvert);
     }
 
-    public function convertAudioToMp3(string $inputPath, string $outputPath): void
+    public function convertAudioToMp3(?string $inputPath = null, ?string $outputPath = null, bool $deleteOriginalAfterConvert = true): void
     {
-        $this->convertAudioTo($inputPath, $outputPath, 'mp3');
+        $this->convertAudioTo($inputPath, $outputPath, 'mp3', $deleteOriginalAfterConvert);
     }
 
-    public function convertAudioToM4a(string $inputPath, string $outputPath): void
+    public function convertAudioToM4a(?string $inputPath = null, ?string $outputPath = null, bool $deleteOriginalAfterConvert = true): void
     {
-        $this->convertAudioTo($inputPath, $outputPath, 'm4a');
+        $this->convertAudioTo($inputPath, $outputPath, 'm4a', $deleteOriginalAfterConvert);
     }
 
-    public function convertAudioToOpus(string $inputPath, string $outputPath): void
+    public function convertAudioToOpus(?string $inputPath = null, ?string $outputPath = null, bool $deleteOriginalAfterConvert = true): void
     {
-        $this->convertAudioTo($inputPath, $outputPath, 'opus');
+        $this->convertAudioTo($inputPath, $outputPath, 'opus', $deleteOriginalAfterConvert);
     }
 
-    public function convertAudioToOgg(string $inputPath, string $outputPath): void
+    public function convertAudioToOgg(?string $inputPath = null, ?string $outputPath = null, bool $deleteOriginalAfterConvert = true): void
     {
-        $this->convertAudioTo($inputPath, $outputPath, 'ogg');
+        $this->convertAudioTo($inputPath, $outputPath, 'ogg', $deleteOriginalAfterConvert);
     }
 
-    public function convertAudioToWav(string $inputPath, string $outputPath): void
+    public function convertAudioToWav(?string $inputPath = null, ?string $outputPath = null, bool $deleteOriginalAfterConvert = true): void
     {
-        $this->convertAudioTo($inputPath, $outputPath, 'wav');
+        $this->convertAudioTo($inputPath, $outputPath, 'wav', $deleteOriginalAfterConvert);
     }
 
-    public function convertAudioToFlac(string $inputPath, string $outputPath): void
+    public function convertAudioToFlac(?string $inputPath = null, ?string $outputPath = null, bool $deleteOriginalAfterConvert = true): void
     {
-        $this->convertAudioTo($inputPath, $outputPath, 'flac');
+        $this->convertAudioTo($inputPath, $outputPath, 'flac', $deleteOriginalAfterConvert);
+    }
+
+    private function resolveConversionInput(?string $inputPath, string $type): string
+    {
+        if ($inputPath !== null) {
+            return $inputPath;
+        }
+
+        if ($this->lastDownloadResult === null) {
+            throw new \InvalidArgumentException('No input file specified and no previous download available.');
+        }
+
+        $path = $type === 'video'
+            ? $this->lastDownloadResult->videoPath
+            : $this->lastDownloadResult->audioPath;
+
+        if ($path === null) {
+            throw new \InvalidArgumentException("No {$type} file found in the last download result.");
+        }
+
+        return $path;
+    }
+
+    private function resolveConversionOutput(string $inputPath, ?string $outputPath, string $format): string
+    {
+        if ($outputPath !== null) {
+            return $outputPath;
+        }
+
+        $directory = dirname($inputPath);
+        $filename = pathinfo($inputPath, PATHINFO_FILENAME);
+
+        return $directory.DIRECTORY_SEPARATOR.$filename.'.'.$format;
     }
 
     /** @return list<string> */
@@ -640,7 +727,7 @@ final class YtPilot
         $binary = $this->locator->requireYtDlp($this->ytDlpPath);
         $command = [$binary];
 
-        if (!$this->hasAnyTarget()) {
+        if (! $this->hasAnyTarget()) {
             $this->downloadVideo = true;
             $this->downloadAudio = true;
         }
@@ -738,7 +825,7 @@ final class YtPilot
 
     private function resolveFfmpegLocation(): ?string
     {
-        if (!Config::get('ffmpeg.enabled', true)) {
+        if (! Config::get('ffmpeg.enabled', true)) {
             return null;
         }
 
@@ -783,8 +870,8 @@ final class YtPilot
     }
 
     /**
-     * @param list<string> $files
-     * @param list<string> $extensions
+     * @param  list<string>  $files
+     * @param  list<string>  $extensions
      */
     private function findFileByType(array $files, array $extensions): ?string
     {
@@ -800,8 +887,8 @@ final class YtPilot
     }
 
     /**
-     * @param list<string> $files
-     * @param list<string> $extensions
+     * @param  list<string>  $files
+     * @param  list<string>  $extensions
      * @return list<string>
      */
     private function findFilesByType(array $files, array $extensions): array
@@ -821,9 +908,9 @@ final class YtPilot
 
     private function initializeServices(): void
     {
-        $this->platform = new PlatformService();
+        $this->platform = new PlatformService;
         $this->pathService = new PathService($this->platform);
-        $this->processRunner = new ProcessRunnerService();
+        $this->processRunner = new ProcessRunnerService;
         $this->downloader = new DownloaderService($this->pathService);
         $this->releaseResolver = new ReleaseResolverService($this->platform);
         $this->manifestService = new ManifestService($this->pathService);
@@ -848,8 +935,8 @@ final class YtPilot
             $this->platform,
         );
 
-        $this->formatsParser = new FormatsParserService();
-        $this->subtitlesParser = new SubtitlesParserService();
+        $this->formatsParser = new FormatsParserService;
+        $this->subtitlesParser = new SubtitlesParserService;
 
         $this->mediaInfo = new MediaInfoService(
             $this->processRunner,

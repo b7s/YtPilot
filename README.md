@@ -537,70 +537,127 @@ YtPilot::make()
 
 ## 🔄 Video & Audio Conversion
 
-Convert media files between formats using the project's ffmpeg binary:
+Convert media files between formats using the project's ffmpeg binary. All conversion methods now support **smart defaults** for seamless workflow integration.
 
 ### Video Conversion Methods
 
-| Method                                                          | Description                |
-| --------------------------------------------------------------- | -------------------------- |
-| `convertVideoTo(string $input, string $output, string $format)` | Convert to custom format   |
-| `convertVideoToMp4(string $input, string $output)`              | Convert to MP4 (H.264/AAC) |
-| `convertVideoToMkv(string $input, string $output)`              | Convert to MKV (copy)      |
-| `convertVideoToWebm(string $input, string $output)`             | Convert to WebM (VP9/Opus) |
-| `convertVideoToAvi(string $input, string $output)`              | Convert to AVI (H.264/MP3) |
+| Method                                                                                  | Description                |
+| --------------------------------------------------------------------------------------- | -------------------------- |
+| `convertVideoTo(?string $input, ?string $output, string $format, bool $deleteOriginal)` | Convert to custom format   |
+| `convertVideoToMp4(?string $input, ?string $output, bool $deleteOriginal)`              | Convert to MP4 (H.264/AAC) |
+| `convertVideoToMkv(?string $input, ?string $output, bool $deleteOriginal)`              | Convert to MKV (copy)      |
+| `convertVideoToWebm(?string $input, ?string $output, bool $deleteOriginal)`             | Convert to WebM (VP9/Opus) |
+| `convertVideoToAvi(?string $input, ?string $output, bool $deleteOriginal)`              | Convert to AVI (H.264/MP3) |
 
 ### Audio Conversion Methods
 
-| Method                                                          | Description                |
-| --------------------------------------------------------------- | -------------------------- |
-| `convertAudioTo(string $input, string $output, string $format)` | Convert to custom format   |
-| `convertAudioToMp3(string $input, string $output)`              | Convert to MP3 (320kbps)   |
-| `convertAudioToM4a(string $input, string $output)`              | Convert to M4A (AAC 192k)  |
-| `convertAudioToOpus(string $input, string $output)`             | Convert to Opus (128kbps)  |
-| `convertAudioToOgg(string $input, string $output)`              | Convert to Ogg Vorbis      |
-| `convertAudioToWav(string $input, string $output)`              | Convert to WAV (PCM)       |
-| `convertAudioToFlac(string $input, string $output)`             | Convert to FLAC (lossless) |
+| Method                                                                                  | Description                |
+| --------------------------------------------------------------------------------------- | -------------------------- |
+| `convertAudioTo(?string $input, ?string $output, string $format, bool $deleteOriginal)` | Convert to custom format   |
+| `convertAudioToMp3(?string $input, ?string $output, bool $deleteOriginal)`              | Convert to MP3 (320kbps)   |
+| `convertAudioToM4a(?string $input, ?string $output, bool $deleteOriginal)`              | Convert to M4A (AAC 192k)  |
+| `convertAudioToOpus(?string $input, ?string $output, bool $deleteOriginal)`             | Convert to Opus (128kbps)  |
+| `convertAudioToOgg(?string $input, ?string $output, bool $deleteOriginal)`              | Convert to Ogg Vorbis      |
+| `convertAudioToWav(?string $input, ?string $output, bool $deleteOriginal)`              | Convert to WAV (PCM)       |
+| `convertAudioToFlac(?string $input, ?string $output, bool $deleteOriginal)`             | Convert to FLAC (lossless) |
+
+### Smart Conversion Features
+
+**All parameters are optional with intelligent defaults:**
+
+- `$input` - If `null`, uses the last downloaded video/audio file automatically
+- `$output` - If `null`, saves to the same directory with the correct extension
+- `$deleteOriginal` - Default `true`, automatically removes the original file after successful conversion
 
 ### Conversion Examples
 
-**Download and convert:**
+**1. Download and convert (simplest way):**
 
 ```php
-$result = YtPilot::make()
+$ytpilot = YtPilot::make()
     ->url('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
     ->video()
     ->onDownloading(fn($p) => print "\rDownload: {$p}%")
-    ->download();
+    ->onConverting(fn($p) => print "\rConvert: {$p}%");
 
-if ($result->success && $result->videoPath) {
-    YtPilot::make()
-        ->onConverting(fn($p) => print "\rConvert: {$p}%")
-        ->convertVideoToMp4($result->videoPath, 'output.mp4');
-}
+$ytpilot->download();
+
+// No parameters needed! Uses downloaded video, auto-names output, deletes original
+$ytpilot->convertVideoToMp4();
 ```
 
-**Convert existing files:**
+**2. Download and convert (keep original):**
+
+```php
+$ytpilot = YtPilot::make()
+    ->url('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+    ->audioOnly();
+
+$ytpilot->download();
+
+// Keep the original file
+$ytpilot->convertAudioToMp3(deleteOriginal: false);
+```
+
+**3. Download with custom output path:**
+
+```php
+$ytpilot = YtPilot::make()
+    ->url('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+    ->video();
+
+$ytpilot->download();
+
+// Custom output path, keep original
+$ytpilot->convertVideoToMp4(
+    outputPath: '/tmp/my-video.mp4',
+    deleteOriginal: false
+);
+```
+
+**4. Convert existing files (explicit input):**
 
 ```php
 $ytpilot = YtPilot::make();
 
-// Convert video formats
-$ytpilot->convertVideoToWebm('video.mp4', 'video.webm');
-$ytpilot->convertVideoToMkv('video.mp4', 'video.mkv');
+// Auto output name, keep original
+$ytpilot->convertVideoToWebm('video.mp4', deleteOriginal: false);
+
+// Custom output name, delete original
+$ytpilot->convertVideoToMkv('video.mp4', 'custom-name.mkv');
 
 // Convert audio formats
-$ytpilot->convertAudioToMp3('audio.m4a', 'audio.mp3');
-$ytpilot->convertAudioToFlac('audio.wav', 'audio.flac');
+$ytpilot->convertAudioToMp3('audio.m4a', deleteOriginal: false);
+$ytpilot->convertAudioToFlac('audio.wav', 'high-quality.flac');
 ```
 
-**Custom format with progress:**
+**5. Custom format with progress tracking:**
 
 ```php
 YtPilot::make()
     ->onConverting(function (int $percentage, float $current, float $duration): void {
-        echo "\rProgress: {$percentage}% ";
+        $time = gmdate('H:i:s', (int) $current);
+        $total = gmdate('H:i:s', (int) $duration);
+        echo "\rProgress: {$percentage}% ({$time} / {$total}) ";
     })
-    ->convertVideoTo('input.avi', 'output.mp4', 'mp4');
+    ->convertVideoTo('input.avi', format: 'mp4', deleteOriginal: false);
+```
+
+**6. Batch conversion workflow:**
+
+```php
+$ytpilot = YtPilot::make()
+    ->url('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+    ->video();
+
+$result = $ytpilot->download();
+
+if ($result->success && $result->videoPath) {
+    // Create multiple formats from the same source
+    $ytpilot->convertVideoToMp4(deleteOriginal: false);  // video.mp4
+    $ytpilot->convertVideoToWebm(deleteOriginal: false); // video.webm
+    $ytpilot->convertVideoToMkv(deleteOriginal: true);   // video.mkv (deletes original)
+}
 ```
 
 ---
