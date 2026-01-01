@@ -75,6 +75,16 @@ final class YtPilot
 
     private bool $overwrite = false;
 
+    private ?string $cookiesFile = null;
+
+    private ?string $cookiesBrowser = null;
+
+    private ?string $cookiesBrowserProfile = null;
+
+    private ?string $cookiesBrowserContainer = null;
+
+    private bool $noCookies = false;
+
     private ?DownloadResult $lastDownloadResult = null;
 
     private PlatformService $platform;
@@ -452,6 +462,38 @@ final class YtPilot
         return $this;
     }
 
+    public function cookies(string $filePath): self
+    {
+        $this->cookiesFile = $filePath;
+        $this->cookiesBrowser = null;
+        $this->noCookies = false;
+
+        return $this;
+    }
+
+    public function cookiesFromBrowser(
+        string $browser,
+        ?string $profile = null,
+        ?string $container = null,
+    ): self {
+        $this->cookiesBrowser = strtolower($browser);
+        $this->cookiesBrowserProfile = $profile;
+        $this->cookiesBrowserContainer = $container;
+        $this->cookiesFile = null;
+        $this->noCookies = false;
+
+        return $this;
+    }
+
+    public function noCookies(): self
+    {
+        $this->noCookies = true;
+        $this->cookiesFile = null;
+        $this->cookiesBrowser = null;
+
+        return $this;
+    }
+
     /**
      * @param  callable(int, float, float): void  $callback
      */
@@ -799,6 +841,16 @@ final class YtPilot
             $command[] = '--force-overwrites';
         }
 
+        if ($this->cookiesFile !== null) {
+            $command[] = '--cookies';
+            $command[] = $this->cookiesFile;
+        } elseif ($this->cookiesBrowser !== null) {
+            $command[] = '--cookies-from-browser';
+            $command[] = $this->buildBrowserCookieArg();
+        } elseif ($this->noCookies) {
+            $command[] = '--no-cookies';
+        }
+
         $ffmpegLocation = $this->resolveFfmpegLocation();
         if ($ffmpegLocation !== null) {
             $command[] = '--ffmpeg-location';
@@ -821,6 +873,21 @@ final class YtPilot
             || $this->downloadMetadata
             || $this->downloadThumbnail
             || $this->audioOnly;
+    }
+
+    private function buildBrowserCookieArg(): string
+    {
+        $arg = $this->cookiesBrowser;
+
+        if ($this->cookiesBrowserProfile !== null) {
+            $arg .= ':'.$this->cookiesBrowserProfile;
+        }
+
+        if ($this->cookiesBrowserContainer !== null) {
+            $arg .= '::'.$this->cookiesBrowserContainer;
+        }
+
+        return $arg;
     }
 
     private function resolveFfmpegLocation(): ?string

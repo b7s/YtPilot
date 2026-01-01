@@ -577,8 +577,8 @@ Convert media files between formats using the project's ffmpeg binary. All conve
 $ytpilot = YtPilot::make()
     ->url('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
     ->video()
-    ->onDownloading(fn($p) => print "\rDownload: {$p}%")
-    ->onConverting(fn($p) => print "\rConvert: {$p}%");
+    ->onDownloading(fn($p) => sendToSomeWebhook($p))
+    ->onConverting(fn($p) => sendToOtherWebhook($p));
 
 $ytpilot->download();
 
