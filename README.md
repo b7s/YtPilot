@@ -380,6 +380,54 @@ YtPilot::make()
 
 ---
 
+### 9. Using Cookies for Authenticated Content
+
+#### Load cookies from file (Netscape format)
+
+```php
+YtPilot::make()
+    ->url('https://www.youtube.com/watch?v=PRIVATE_VIDEO_ID')
+    ->cookies('/path/to/cookies.txt')
+    ->best()
+    ->download();
+```
+
+#### Extract cookies directly from browser
+
+```php
+// From Chrome
+YtPilot::make()
+    ->url('https://www.youtube.com/watch?v=AGE_RESTRICTED_VIDEO')
+    ->cookiesFromBrowser('chrome')
+    ->best()
+    ->download();
+
+// From Firefox with specific profile
+YtPilot::make()
+    ->url('https://www.youtube.com/watch?v=PREMIUM_VIDEO')
+    ->cookiesFromBrowser('firefox', 'default-release')
+    ->best()
+    ->download();
+
+// From Firefox with profile and container
+YtPilot::make()
+    ->url('https://www.youtube.com/watch?v=VIDEO_ID')
+    ->cookiesFromBrowser('firefox', 'default-release', 'Personal')
+    ->best()
+    ->download();
+```
+
+**How to export cookies to Netscape format:**
+
+You can use browser extensions like:
+
+- **Chrome/Edge:** [Get cookies.txt LOCALLY](https://chrome.google.com/webstore/detail/get-cookiestxt-locally/cclelndahbckbenkjhflpdbgdldlbecc)
+- **Firefox:** [cookies.txt](https://addons.mozilla.org/en-US/firefox/addon/cookies-txt/)
+
+**Supported browsers:** `brave`, `chrome`, `chromium`, `edge`, `firefox`, `opera`, `safari`, `vivaldi`, `whale`
+
+---
+
 ## 🎯 Complete API
 
 ### Target Methods (Accumulative)
@@ -457,6 +505,23 @@ Control **how** the download will be performed:
 | `simulate()`         | Simulate download        | `->simulate()`                  |
 
 > **Note:** If no `outputPath()` is specified, files are downloaded to the current working directory or the path defined in `config/ytpilot.php` under `download_path`.
+
+#### Cookie Options
+
+| Method                                         | Description                     | Example                             |
+| ---------------------------------------------- | ------------------------------- | ----------------------------------- |
+| `cookies(string)`                              | Load cookies from Netscape file | `->cookies('/path/to/cookies.txt')` |
+| `cookiesFromBrowser(string, ?string, ?string)` | Extract cookies from browser    | `->cookiesFromBrowser('chrome')`    |
+| `noCookies()`                                  | Explicitly disable cookies      | `->noCookies()`                     |
+
+**Supported browsers:** `brave`, `chrome`, `chromium`, `edge`, `firefox`, `opera`, `safari`, `vivaldi`, `whale`
+
+**Cookie use cases:**
+
+- Access age-restricted content
+- Download private/unlisted videos (with authenticated account)
+- Access premium content (YouTube Premium, etc.)
+- Bypass some regional restrictions
 
 #### Binary Management
 
