@@ -436,6 +436,8 @@ While YouTube is the primary focus, YtPilot supports downloading from many other
 
 YtPilot supports **1000+ websites** including:
 
+> **Important:** Only video/audio content is downloaded. Text posts, images, captions, and comments are not included.
+
 | Platform    | Example URL                     | Subtitles | Notes                   |
 | ----------- | ------------------------------- | --------- | ----------------------- |
 | Instagram   | `instagram.com/reel/...`        | ❌        | 🔒 Cookies recommended  |
