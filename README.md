@@ -9,7 +9,7 @@
   [![PHPStan Level 6](https://img.shields.io/badge/PHPStan-Level%206-brightgreen)](https://phpstan.org/)
   [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
   
-  [Installation](#-installation) • [Quick Start](#-quick-start) • [CLI Commands](#-cli-commands) • [Examples](#-examples) • [API Reference](#-complete-api)
+  [Installation](#-installation) • [Quick Start](#-quick-start) • [CLI Commands](#-cli-commands) • [Examples](#-examples) • [Other Platforms](#-other-platforms) • [API Reference](#-complete-api)
 </div>
 
 ---
@@ -428,7 +428,166 @@ You can use browser extensions like:
 
 ---
 
-## 🎯 Complete API
+## 🌐 Other Platforms
+
+While YouTube is the primary focus, YtPilot supports downloading from many other platforms through yt-dlp. Just pass the URL and it works automatically for most platforms.
+
+### Supported Platforms
+
+YtPilot supports **1000+ websites** including:
+
+| Platform    | Example URL                     | Notes                |
+| ----------- | ------------------------------- | -------------------- |
+| Instagram   | `instagram.com/reel/...`        | Cookies recommended  |
+| Twitter/X   | `twitter.com/user/status/...`   | Works without auth   |
+| TikTok      | `tiktok.com/@user/video/...`    | Works without auth   |
+| Facebook    | `facebook.com/watch?v=...`      | Cookies recommended  |
+| Vimeo       | `vimeo.com/123456`              | Password for private |
+| Twitch      | `twitch.tv/videos/...`          | VODs and clips       |
+| Reddit      | `reddit.com/r/.../comments/...` | Works without auth   |
+| SoundCloud  | `soundcloud.com/artist/track`   | Works without auth   |
+| Dailymotion | `dailymotion.com/video/...`     | Works without auth   |
+| Bilibili    | `bilibili.com/video/...`        | Session for premium  |
+
+### Basic Usage
+
+For most platforms, just pass the URL:
+
+```php
+use YtPilot\YtPilot;
+
+// Instagram
+YtPilot::make()
+    ->url('https://www.instagram.com/reel/ABC123/')
+    ->cookiesFromBrowser('chrome')  // Recommended for Instagram
+    ->download();
+
+// Twitter/X
+YtPilot::make()
+    ->url('https://twitter.com/user/status/123456789')
+    ->best()
+    ->download();
+
+// TikTok
+YtPilot::make()
+    ->url('https://www.tiktok.com/@user/video/123456789')
+    ->download();
+
+// Facebook
+YtPilot::make()
+    ->url('https://www.facebook.com/watch?v=123456789')
+    ->cookiesFromBrowser('chrome')
+    ->download();
+
+// Reddit
+YtPilot::make()
+    ->url('https://www.reddit.com/r/subreddit/comments/abc123/title/')
+    ->download();
+
+// SoundCloud
+YtPilot::make()
+    ->url('https://soundcloud.com/artist/track-name')
+    ->audioOnly()
+    ->audioFormat('mp3')
+    ->download();
+
+// Twitch VOD
+YtPilot::make()
+    ->url('https://www.twitch.tv/videos/123456789')
+    ->download();
+```
+
+### Platform-Specific Configuration
+
+Some platforms have optional configuration methods for advanced use cases:
+
+#### Twitter/X API Selection
+
+```php
+use YtPilot\Enums\TwitterApi;
+
+// Using syndication API (default, no auth required)
+YtPilot::make()
+    ->url('https://twitter.com/user/status/123456789')
+    ->configTwitter(TwitterApi::Syndication)
+    ->download();
+
+// Using GraphQL API (may require cookies for some content)
+YtPilot::make()
+    ->url('https://x.com/user/status/123456789')
+    ->configTwitter(TwitterApi::GraphQL)
+    ->cookiesFromBrowser('chrome')
+    ->download();
+```
+
+#### TikTok API Selection
+
+```php
+use YtPilot\Enums\TikTokApi;
+
+// Using web API (default)
+YtPilot::make()
+    ->url('https://www.tiktok.com/@user/video/123456789')
+    ->configTikTok(TikTokApi::Web)
+    ->download();
+
+// Using app API
+YtPilot::make()
+    ->url('https://vm.tiktok.com/ABC123/')
+    ->configTikTok(TikTokApi::App)
+    ->download();
+```
+
+#### Vimeo Password-Protected Videos
+
+```php
+YtPilot::make()
+    ->url('https://vimeo.com/123456789')
+    ->configVimeo('video_password')
+    ->download();
+```
+
+#### Bilibili Premium Content
+
+```php
+YtPilot::make()
+    ->url('https://www.bilibili.com/video/BV1xx411c7mD')
+    ->configBilibili('your_sess_data_cookie')
+    ->download();
+```
+
+### Generic Authentication
+
+For platforms requiring username/password:
+
+```php
+YtPilot::make()
+    ->url('https://example.com/video/123')
+    ->withCredentials('username', 'password')
+    ->download();
+```
+
+### Custom Extractor Arguments
+
+For advanced use cases with any extractor:
+
+```php
+YtPilot::make()
+    ->url('https://example.com/video/123')
+    ->extractorArgs('youtube', [
+        'player_client' => 'android',
+        'skip' => 'dash',
+    ])
+    ->download();
+```
+
+### Notes
+
+- **Cookies:** Some platforms (Instagram, Facebook) require authentication via cookies
+- **Rate Limiting:** Add delays between downloads if you experience issues
+- **Terms of Service:** Respect each platform's terms when downloading content
+
+---
 
 ### Target Methods (Accumulative)
 
@@ -522,6 +681,17 @@ Control **how** the download will be performed:
 - Download private/unlisted videos (with authenticated account)
 - Access premium content (YouTube Premium, etc.)
 - Bypass some regional restrictions
+
+#### Platform Configuration
+
+| Method                            | Description                | Example                                    |
+| --------------------------------- | -------------------------- | ------------------------------------------ |
+| `configTwitter(TwitterApi)`       | Configure Twitter API      | `->configTwitter(TwitterApi::Syndication)` |
+| `configTikTok(TikTokApi)`         | Configure TikTok API       | `->configTikTok(TikTokApi::Web)`           |
+| `configVimeo(string)`             | Vimeo password-protected   | `->configVimeo('password')`                |
+| `configBilibili(string)`          | Bilibili session data      | `->configBilibili('sess_data')`            |
+| `withCredentials(string, string)` | Set username/password      | `->withCredentials('user', 'pass')`        |
+| `extractorArgs(string, array)`    | Custom extractor arguments | `->extractorArgs('youtube', [...])`        |
 
 #### Binary Management
 

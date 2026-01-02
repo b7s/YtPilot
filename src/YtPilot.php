@@ -6,7 +6,10 @@ namespace YtPilot;
 
 use YtPilot\DTO\DownloadResult;
 use YtPilot\DTO\FormatItem;
+use YtPilot\DTO\PlatformConfig;
 use YtPilot\DTO\SubtitleList;
+use YtPilot\Enums\TikTokApi;
+use YtPilot\Enums\TwitterApi;
 use YtPilot\Exceptions\MissingUrlException;
 use YtPilot\Services\Binary\BinaryLocatorService;
 use YtPilot\Services\Binary\FfmpegBinaryService;
@@ -86,6 +89,15 @@ final class YtPilot
     private bool $noCookies = false;
 
     private ?DownloadResult $lastDownloadResult = null;
+
+    private ?PlatformConfig $platformConfig = null;
+
+    private ?string $username = null;
+
+    private ?string $password = null;
+
+    /** @var array<string, string> */
+    private array $extractorArgs = [];
 
     private PlatformService $platform;
 
@@ -494,6 +506,66 @@ final class YtPilot
         return $this;
     }
 
+    public function configTwitter(TwitterApi $api = TwitterApi::Syndication): self
+    {
+        $this->platformConfig = new PlatformConfig(
+            platform: 'twitter',
+            extractorArgs: ['api' => $api->value],
+        );
+
+        return $this;
+    }
+
+    public function configTikTok(TikTokApi $api = TikTokApi::Web): self
+    {
+        $this->platformConfig = new PlatformConfig(
+            platform: 'tiktok',
+            extractorArgs: ['api' => $api->value],
+        );
+
+        return $this;
+    }
+
+    public function configVimeo(string $password): self
+    {
+        $this->platformConfig = new PlatformConfig(
+            platform: 'vimeo',
+            password: $password,
+        );
+
+        return $this;
+    }
+
+    public function configBilibili(string $sessionData): self
+    {
+        $this->platformConfig = new PlatformConfig(
+            platform: 'bilibili',
+            extractorArgs: ['sess_data' => $sessionData],
+        );
+
+        return $this;
+    }
+
+    public function withCredentials(string $username, string $password): self
+    {
+        $this->username = $username;
+        $this->password = $password;
+
+        return $this;
+    }
+
+    /**
+     * @param  array<string, string>  $args
+     */
+    public function extractorArgs(string $extractor, array $args): self
+    {
+        foreach ($args as $key => $value) {
+            $this->extractorArgs["{$extractor}:{$key}"] = $value;
+        }
+
+        return $this;
+    }
+
     /**
      * @param  callable(int, float, float): void  $callback
      */
@@ -849,6 +921,25 @@ final class YtPilot
             $command[] = $this->buildBrowserCookieArg();
         } elseif ($this->noCookies) {
             $command[] = '--no-cookies';
+        }
+
+        if ($this->username !== null) {
+            $command[] = '--username';
+            $command[] = $this->username;
+        }
+
+        if ($this->password !== null) {
+            $command[] = '--password';
+            $command[] = $this->password;
+        }
+
+        if ($this->platformConfig !== null) {
+            $command = [...$command, ...$this->platformConfig->toCommandArgs()];
+        }
+
+        foreach ($this->extractorArgs as $key => $value) {
+            $command[] = '--extractor-args';
+            $command[] = "{$key}={$value}";
         }
 
         $ffmpegLocation = $this->resolveFfmpegLocation();
