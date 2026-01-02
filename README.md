@@ -436,18 +436,18 @@ While YouTube is the primary focus, YtPilot supports downloading from many other
 
 YtPilot supports **1000+ websites** including:
 
-| Platform    | Example URL                     | Notes                |
-| ----------- | ------------------------------- | -------------------- |
-| Instagram   | `instagram.com/reel/...`        | Cookies recommended  |
-| Twitter/X   | `twitter.com/user/status/...`   | Works without auth   |
-| TikTok      | `tiktok.com/@user/video/...`    | Works without auth   |
-| Facebook    | `facebook.com/watch?v=...`      | Cookies recommended  |
-| Vimeo       | `vimeo.com/123456`              | Password for private |
-| Twitch      | `twitch.tv/videos/...`          | VODs and clips       |
-| Reddit      | `reddit.com/r/.../comments/...` | Works without auth   |
-| SoundCloud  | `soundcloud.com/artist/track`   | Works without auth   |
-| Dailymotion | `dailymotion.com/video/...`     | Works without auth   |
-| Bilibili    | `bilibili.com/video/...`        | Session for premium  |
+| Platform    | Example URL                     | Subtitles | Notes                   |
+| ----------- | ------------------------------- | --------- | ----------------------- |
+| Instagram   | `instagram.com/reel/...`        | ❌        | 🔒 Cookies recommended  |
+| Twitter/X   | `twitter.com/user/status/...`   | ❌        | 🔓 Works without auth   |
+| TikTok      | `tiktok.com/@user/video/...`    | ❌        | 🔓 Works without auth   |
+| Facebook    | `facebook.com/watch?v=...`      | ⚠️        | 🔒 Cookies recommended  |
+| Vimeo       | `vimeo.com/123456`              | ✅        | 🔐 Password for private |
+| Twitch      | `twitch.tv/videos/...`          | ✅        | VODs and clips          |
+| Reddit      | `reddit.com/r/.../comments/...` | ❌        | 🔓 Works without auth   |
+| SoundCloud  | `soundcloud.com/artist/track`   | N/A       | Audio only              |
+| Dailymotion | `dailymotion.com/video/...`     | ✅        | 🔓 Works without auth   |
+| Bilibili    | `bilibili.com/video/...`        | ✅        | 🔐 Session for premium  |
 
 ### Basic Usage
 
@@ -494,6 +494,14 @@ YtPilot::make()
 // Twitch VOD
 YtPilot::make()
     ->url('https://www.twitch.tv/videos/123456789')
+    ->download();
+
+// Vimeo with subtitles
+YtPilot::make()
+    ->url('https://vimeo.com/123456789')
+    ->video()
+    ->subtitles()
+    ->subtitleLanguages(['en', 'pt'])
     ->download();
 ```
 
@@ -586,6 +594,7 @@ YtPilot::make()
 - **Cookies:** Some platforms (Instagram, Facebook) require authentication via cookies
 - **Rate Limiting:** Add delays between downloads if you experience issues
 - **Terms of Service:** Respect each platform's terms when downloading content
+- **Subtitles:** Only some platforms support subtitles (YouTube, Vimeo, Twitch, Dailymotion, Bilibili). Social media platforms like Instagram, Twitter, TikTok, and Reddit typically don't have subtitle support
 
 ---
 
