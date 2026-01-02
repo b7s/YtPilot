@@ -428,6 +428,115 @@ You can use browser extensions like:
 
 ---
 
+### 10. Using Proxy for Downloads
+
+#### Simple proxy configuration
+
+```php
+// HTTP proxy
+YtPilot::make()
+    ->url('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+    ->httpProxy('proxy.example.com', 8080)
+    ->best()
+    ->download();
+
+// SOCKS5 proxy
+YtPilot::make()
+    ->url('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+    ->socks5Proxy('proxy.example.com', 1080)
+    ->best()
+    ->download();
+
+// Full proxy URL (any protocol)
+YtPilot::make()
+    ->url('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+    ->proxy('socks5://user:pass@proxy.example.com:1080')
+    ->best()
+    ->download();
+```
+
+#### Proxy with authentication
+
+```php
+use YtPilot\Enums\ProxyProtocol;
+
+YtPilot::make()
+    ->url('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+    ->proxyWithAuth(
+        host: 'proxy.example.com',
+        port: 8080,
+        username: 'myuser',
+        password: 'mypassword',
+        protocol: ProxyProtocol::Http
+    )
+    ->best()
+    ->download();
+```
+
+#### Using Tor for anonymous downloads
+
+```php
+// Default Tor port (9050)
+YtPilot::make()
+    ->url('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+    ->torProxy()
+    ->best()
+    ->download();
+
+// Tor Browser port (9150)
+YtPilot::make()
+    ->url('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+    ->torProxy(9150)
+    ->best()
+    ->download();
+```
+
+#### Geo-verification proxy
+
+Use a different proxy only for geo-verification while downloading through your main connection:
+
+```php
+YtPilot::make()
+    ->url('https://www.youtube.com/watch?v=GEO_RESTRICTED_VIDEO')
+    ->geoVerificationProxy('http://us-proxy.example.com:8080')
+    ->best()
+    ->download();
+```
+
+#### Force IPv4 or IPv6
+
+```php
+// Force IPv4 connections
+YtPilot::make()
+    ->url('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+    ->forceIpv4()
+    ->best()
+    ->download();
+
+// Force IPv6 connections
+YtPilot::make()
+    ->url('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+    ->forceIpv6()
+    ->best()
+    ->download();
+```
+
+#### Bind to specific source address
+
+```php
+YtPilot::make()
+    ->url('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+    ->sourceAddress('192.168.1.100')
+    ->best()
+    ->download();
+```
+
+**Supported proxy protocols:** `http`, `https`, `socks4`, `socks4a`, `socks5`, `socks5h`
+
+> **Note:** `socks5h` resolves DNS through the proxy server, useful for accessing .onion sites through Tor.
+
+---
+
 ## 🌐 Other Platforms
 
 While YouTube is the primary focus, YtPilot supports downloading from many other platforms through yt-dlp. Just pass the URL and it works automatically for most platforms.
@@ -691,7 +800,34 @@ Control **how** the download will be performed:
 - Access age-restricted content
 - Download private/unlisted videos (with authenticated account)
 - Access premium content (YouTube Premium, etc.)
-- Bypass some regional restrictions
+- Bypass censorship/geo-restrictions
+
+#### Proxy & Network Options
+
+| Method                                                      | Description                       | Example                                           |
+| ----------------------------------------------------------- | --------------------------------- | ------------------------------------------------- |
+| `proxy(string)`                                             | Set proxy URL (any protocol)      | `->proxy('http://proxy:8080')`                    |
+| `proxyWithAuth(string, int, string, string, ProxyProtocol)` | Proxy with authentication         | `->proxyWithAuth('host', 8080, 'user', 'pass')`   |
+| `httpProxy(string, int)`                                    | HTTP proxy                        | `->httpProxy('proxy.example.com', 8080)`          |
+| `httpsProxy(string, int)`                                   | HTTPS proxy                       | `->httpsProxy('proxy.example.com', 443)`          |
+| `socks4Proxy(string, int)`                                  | SOCKS4 proxy                      | `->socks4Proxy('proxy.example.com', 1080)`        |
+| `socks5Proxy(string, int)`                                  | SOCKS5 proxy                      | `->socks5Proxy('proxy.example.com', 1080)`        |
+| `socks5hProxy(string, int)`                                 | SOCKS5 with remote DNS resolution | `->socks5hProxy('proxy.example.com', 1080)`       |
+| `torProxy(int)`                                             | Tor proxy (default port 9050)     | `->torProxy()` or `->torProxy(9150)`              |
+| `noProxy()`                                                 | Explicitly disable proxy          | `->noProxy()`                                     |
+| `geoVerificationProxy(string)`                              | Proxy for geo-verification only   | `->geoVerificationProxy('http://geo-proxy:8080')` |
+| `sourceAddress(string)`                                     | Bind to specific IP address       | `->sourceAddress('192.168.1.100')`                |
+| `forceIpv4()`                                               | Force IPv4 connections            | `->forceIpv4()`                                   |
+| `forceIpv6()`                                               | Force IPv6 connections            | `->forceIpv6()`                                   |
+
+**Supported proxy protocols:** `http`, `https`, `socks4`, `socks4a`, `socks5`, `socks5h`
+
+**Proxy use cases:**
+
+- Bypass censorship/geo-restrictions
+- Avoid IP bans and rate limiting
+- Access content from specific regions
+- Route traffic through Tor for anonymity
 
 #### Platform Configuration
 

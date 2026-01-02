@@ -8,6 +8,7 @@ use YtPilot\DTO\DownloadResult;
 use YtPilot\DTO\FormatItem;
 use YtPilot\DTO\PlatformConfig;
 use YtPilot\DTO\SubtitleList;
+use YtPilot\Enums\ProxyProtocol;
 use YtPilot\Enums\TikTokApi;
 use YtPilot\Enums\TwitterApi;
 use YtPilot\Exceptions\MissingUrlException;
@@ -98,6 +99,18 @@ final class YtPilot
 
     /** @var array<string, string> */
     private array $extractorArgs = [];
+
+    private ?string $proxyUrl = null;
+
+    private bool $noProxy = false;
+
+    private ?string $geoVerificationProxy = null;
+
+    private ?string $sourceAddress = null;
+
+    private bool $forceIpv4 = false;
+
+    private bool $forceIpv6 = false;
 
     private PlatformService $platform;
 
@@ -566,6 +579,120 @@ final class YtPilot
         return $this;
     }
 
+    public function proxy(string $url): self
+    {
+        $this->proxyUrl = $url;
+        $this->noProxy = false;
+
+        return $this;
+    }
+
+    public function proxyWithAuth(
+        string $host,
+        int $port,
+        string $username,
+        string $password,
+        ProxyProtocol $protocol = ProxyProtocol::Http,
+    ): self {
+        $this->proxyUrl = sprintf(
+            '%s://%s:%s@%s:%d',
+            $protocol->value,
+            urlencode($username),
+            urlencode($password),
+            $host,
+            $port,
+        );
+        $this->noProxy = false;
+
+        return $this;
+    }
+
+    public function httpProxy(string $host, int $port): self
+    {
+        $this->proxyUrl = sprintf('http://%s:%d', $host, $port);
+        $this->noProxy = false;
+
+        return $this;
+    }
+
+    public function httpsProxy(string $host, int $port): self
+    {
+        $this->proxyUrl = sprintf('https://%s:%d', $host, $port);
+        $this->noProxy = false;
+
+        return $this;
+    }
+
+    public function socks4Proxy(string $host, int $port): self
+    {
+        $this->proxyUrl = sprintf('socks4://%s:%d', $host, $port);
+        $this->noProxy = false;
+
+        return $this;
+    }
+
+    public function socks5Proxy(string $host, int $port): self
+    {
+        $this->proxyUrl = sprintf('socks5://%s:%d', $host, $port);
+        $this->noProxy = false;
+
+        return $this;
+    }
+
+    public function socks5hProxy(string $host, int $port): self
+    {
+        $this->proxyUrl = sprintf('socks5h://%s:%d', $host, $port);
+        $this->noProxy = false;
+
+        return $this;
+    }
+
+    public function torProxy(int $port = 9050): self
+    {
+        $this->proxyUrl = sprintf('socks5://127.0.0.1:%d', $port);
+        $this->noProxy = false;
+
+        return $this;
+    }
+
+    public function noProxy(): self
+    {
+        $this->noProxy = true;
+        $this->proxyUrl = null;
+
+        return $this;
+    }
+
+    public function geoVerificationProxy(string $url): self
+    {
+        $this->geoVerificationProxy = $url;
+
+        return $this;
+    }
+
+    public function sourceAddress(string $ip): self
+    {
+        $this->sourceAddress = $ip;
+
+        return $this;
+    }
+
+    public function forceIpv4(): self
+    {
+        $this->forceIpv4 = true;
+        $this->forceIpv6 = false;
+
+        return $this;
+    }
+
+    public function forceIpv6(): self
+    {
+        $this->forceIpv6 = true;
+        $this->forceIpv4 = false;
+
+        return $this;
+    }
+
     /**
      * @param  callable(int, float, float): void  $callback
      */
@@ -940,6 +1067,32 @@ final class YtPilot
         foreach ($this->extractorArgs as $key => $value) {
             $command[] = '--extractor-args';
             $command[] = "{$key}={$value}";
+        }
+
+        if ($this->proxyUrl !== null) {
+            $command[] = '--proxy';
+            $command[] = $this->proxyUrl;
+        } elseif ($this->noProxy) {
+            $command[] = '--proxy';
+            $command[] = '';
+        }
+
+        if ($this->geoVerificationProxy !== null) {
+            $command[] = '--geo-verification-proxy';
+            $command[] = $this->geoVerificationProxy;
+        }
+
+        if ($this->sourceAddress !== null) {
+            $command[] = '--source-address';
+            $command[] = $this->sourceAddress;
+        }
+
+        if ($this->forceIpv4) {
+            $command[] = '--force-ipv4';
+        }
+
+        if ($this->forceIpv6) {
+            $command[] = '--force-ipv6';
         }
 
         $ffmpegLocation = $this->resolveFfmpegLocation();

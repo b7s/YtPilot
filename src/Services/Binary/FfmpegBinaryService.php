@@ -12,6 +12,8 @@ use YtPilot\Services\Http\DownloaderService;
 use YtPilot\Services\Platform\PlatformService;
 use YtPilot\Services\Process\ProcessRunnerService;
 
+use function in_array;
+
 final class FfmpegBinaryService
 {
     public function __construct(
@@ -31,7 +33,7 @@ final class FfmpegBinaryService
         $archiveType = $this->releaseResolver->getFfmpegArchiveType();
         $binDir = $this->pathService->ensureBinDirectory();
 
-        $archivePath = $binDir . DIRECTORY_SEPARATOR . 'ffmpeg-archive.' . $archiveType;
+        $archivePath = $binDir.DIRECTORY_SEPARATOR.'ffmpeg-archive.'.$archiveType;
 
         if ($progressCallback !== null) {
             $this->downloaderService->downloadWithProgress($url, $archivePath, $progressCallback);
@@ -82,17 +84,17 @@ final class FfmpegBinaryService
 
     public function validate(string $path): void
     {
-        if (!is_file($path)) {
+        if (! is_file($path)) {
             throw BinaryValidationException::notFound($path);
         }
 
-        if (!is_executable($path)) {
+        if (! is_executable($path)) {
             throw BinaryValidationException::notExecutable($path);
         }
 
         $result = $this->processRunner->run([$path, '-version'], timeout: 10);
 
-        if (!$result->success) {
+        if (! $result->success) {
             throw BinaryValidationException::versionCheckFailed('ffmpeg', $result->errorOutput);
         }
     }
@@ -106,14 +108,14 @@ final class FfmpegBinaryService
         }
 
         $result = $this->processRunner->run([$binaryPath, '-version'], timeout: 10);
-        
+
         if ($result->output === '') {
             return 'unknown';
         }
-        
+
         $lines = explode("\n", $result->output);
         $firstLine = array_shift($lines);
-        
+
         if (in_array($firstLine, [0, null, ''], true)) {
             return 'unknown';
         }
@@ -146,8 +148,8 @@ final class FfmpegBinaryService
         $archiveType = $this->releaseResolver->getFfmpegArchiveType();
         $ext = $this->platform->getExecutableExtension();
 
-        $ffmpegDest = $binDir . DIRECTORY_SEPARATOR . 'ffmpeg' . $ext;
-        $ffprobeDest = $binDir . DIRECTORY_SEPARATOR . 'ffprobe' . $ext;
+        $ffmpegDest = $binDir.DIRECTORY_SEPARATOR.'ffmpeg'.$ext;
+        $ffprobeDest = $binDir.DIRECTORY_SEPARATOR.'ffprobe'.$ext;
 
         if ($archiveType === 'zip') {
             $this->extractFromZip($archivePath, $binDir, $ffmpegDest, $ffprobeDest);
@@ -163,7 +165,7 @@ final class FfmpegBinaryService
 
     private function extractFromZip(string $archivePath, string $binDir, string $ffmpegDest, string $ffprobeDest): void
     {
-        $zip = new \ZipArchive();
+        $zip = new \ZipArchive;
 
         if ($zip->open($archivePath) !== true) {
             throw BinaryDownloadException::failedToDownload('ffmpeg', $archivePath, 'Failed to open archive');
@@ -182,7 +184,7 @@ final class FfmpegBinaryService
 
             $basename = basename($name);
 
-            if ($basename === 'ffmpeg' . $ext || $basename === 'ffmpeg') {
+            if ($basename === 'ffmpeg'.$ext || $basename === 'ffmpeg') {
                 $content = $zip->getFromIndex($i);
                 if ($content !== false) {
                     file_put_contents($ffmpegDest, $content);
@@ -191,7 +193,7 @@ final class FfmpegBinaryService
                 }
             }
 
-            if ($basename === 'ffprobe' . $ext || $basename === 'ffprobe') {
+            if ($basename === 'ffprobe'.$ext || $basename === 'ffprobe') {
                 $content = $zip->getFromIndex($i);
                 if ($content !== false) {
                     file_put_contents($ffprobeDest, $content);
@@ -203,21 +205,21 @@ final class FfmpegBinaryService
 
         $zip->close();
 
-        if (!$ffmpegFound) {
+        if (! $ffmpegFound) {
             throw BinaryDownloadException::failedToDownload('ffmpeg', $archivePath, 'ffmpeg binary not found in archive');
         }
     }
 
     private function extractFromTarXz(string $archivePath, string $binDir, string $ffmpegDest, string $ffprobeDest): void
     {
-        $tempDir = $binDir . DIRECTORY_SEPARATOR . 'ffmpeg-extract-' . uniqid();
+        $tempDir = $binDir.DIRECTORY_SEPARATOR.'ffmpeg-extract-'.uniqid();
         mkdir($tempDir, 0755, true);
 
         $result = $this->processRunner->run([
             'tar', '-xf', $archivePath, '-C', $tempDir,
         ], timeout: 120);
 
-        if (!$result->success) {
+        if (! $result->success) {
             $this->cleanupDir($tempDir);
             throw BinaryDownloadException::failedToDownload('ffmpeg', $archivePath, 'Failed to extract archive');
         }
@@ -259,7 +261,7 @@ final class FfmpegBinaryService
 
     private function cleanupDir(string $dir): void
     {
-        if (!is_dir($dir)) {
+        if (! is_dir($dir)) {
             return;
         }
 
