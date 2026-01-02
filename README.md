@@ -30,7 +30,7 @@
 ## 📦 Installation
 
 ```bash
-composer require ytpilot/ytpilot
+composer require b7s/ytpilot
 ```
 
 ### Install Binaries
